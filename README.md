@@ -1,8 +1,25 @@
 # Bonding Curve SDK
 
-Pure Rust quoting SDK for the Bonding Curve venue.
+Pure Rust quoting SDK for the Bonding Curve venue, prepared for Jupiter AMM integration.
 
-Design goals:
+## Status
+
+This repository contains the SDK portion of the integration:
+
+- deterministic pool parsing from account data
+- exact-in quote math for both directions
+- on-chain fee semantics, including referral-aware fee splitting
+- venue metadata and PDA helpers
+- swap account metas in contract ABI order
+- an optional compile-checked Jupiter adapter behind the `jupiter-adapter` feature
+
+This repository does not yet contain a fully wired Jupiter integration:
+
+- no loader registration
+- no Jupiter execution-layer plumbing
+- no snapshot-based or route-execution tests
+
+## Design Goals
 
 - easy for Jupiter to fork and maintain
 - no network calls
@@ -11,13 +28,14 @@ Design goals:
 - thin adapter layer in `jupiter-core`
 - standalone-repo friendly packaging
 
-Current scope:
+## What The SDK Owns
 
-- deserialize Bonding Curve pool state into `PoolSnapshot`
-- quote both directions with on-chain fee semantics
-- expose venue metadata and PDA helpers
-- build swap account metas in original contract ABI order
-- stay free of Jupiter-specific trait types
+- `PoolSnapshot` parsing from raw pool account data
+- quote direction detection from input and output mints
+- quote math for quote-to-base and base-to-quote swaps
+- fee and market-cap calculations
+- bonding curve program metadata and PDA helpers
+- swap account meta construction
 
 Main exports:
 
@@ -40,10 +58,44 @@ Main exports:
 - `SwapAccountMetasParams`
 - `build_swap_account_metas`
 
-Minimal Jupiter adapter flow:
+## What Stays Outside This Crate
+
+- `QuoteParams` and `SwapParams` mapping
+- placeholder account policy for optional referral accounts
+- loader registration
+- route execution and CPI plumbing
+- Jupiter-side snapshot and execution tests
+
+## Jupiter Integration Shape
+
+The receiving Jupiter integration repo should:
+
+1. depend on `bonding-curve-sdk` with the `jupiter-adapter` feature enabled
+2. register `BondingCurveAmm` in the loader or program-id map
+3. wire `Swap::MeteoraDynamicBondingCurveSwapWithRemainingAccounts` to the execution path
+4. add quote, account-meta, snapshot, and execution tests
+
+Current adapter assumptions:
+
+- `jupiter_amm_interface` is available in the target repo
+- `Swap::MeteoraDynamicBondingCurveSwapWithRemainingAccounts` exists in the target execution path
+- the target repo wants a deterministic no-referral quote policy until quote-time referrer context is available
+
+## Jupiter Adapter Feature
+
+Enable the adapter with:
+
+```bash
+cargo test --features jupiter-adapter
+```
+
+The feature exports `bonding_curve_sdk::BondingCurveAmm` and compile-checks the adapter
+against `jupiter-amm-interface`.
+
+## Minimal Adapter Flow
 
 ```rust
-use bonding_curve_sdk::{quote_for_mints, PoolSnapshot, WSOL_MINT};
+use bonding_curve_sdk::{quote_for_mints, PoolSnapshot};
 
 let snapshot = PoolSnapshot::try_from_account_data(&pool_account.data)?;
 let sdk_quote = quote_for_mints(
@@ -64,31 +116,38 @@ let jupiter_quote = jupiter_amm_interface::Quote {
 };
 ```
 
-Current referral status:
+The source of truth for the adapter lives in `src/jupiter_adapter.rs`.
 
-- no-referral quote is supported
-- referral-aware quote follows the current on-chain fee split rules
-- the current Jupiter adapter still defaults to no-referral quote because the `Amm` quote surface does not carry referral presence
-- swap execution can still pass a referral token account separately through `SwapParams::quote_mint_to_referrer`
+## Referral Behavior
 
-What stays outside this crate:
+- the SDK supports no-referral and referral-aware quote math
+- the total fee remains the same when a referral is present
+- the referral changes the split of the protocol fee, not the total fee charged
+- the current adapter defaults `Amm::quote()` to no-referral because `QuoteParams` does not carry referrer presence
+- swap execution can still pass a referral token account through `SwapParams::quote_mint_to_referrer`
 
-- `impl Amm for BondingCurveAmm`
-- `QuoteParams` / `SwapParams` mapping
-- placeholder account policy for optional referral accounts
-- route execution / CPI plumbing
-- loader registration
+## Validation
 
-Standalone repo checklist:
+Run these locally before handing the repository to Jupiter:
 
-- copy `bonding-curve-sdk/src/*`
-- copy this `README.md`
-- copy `LICENSE`
-- copy `CHANGELOG.md`
-- copy [extraction_checklist.md](./extraction_checklist.md)
-- copy `handoff/*` if you want to hand Jupiter a ready-made adapter template
+```bash
+cargo fmt --check
+cargo test
+cargo test --features jupiter-adapter
+```
+
+## Repository Guide
+
+- [extraction_checklist.md](./extraction_checklist.md): files and metadata to include when handing this repo to Jupiter
+- `src/jupiter_adapter.rs`: feature-backed Jupiter adapter implementation
+
+## Delivery Notes
+
+Before external handoff:
+
 - fill `repository`, `homepage`, and `documentation` in `Cargo.toml`
-- review the `LICENSE` copyright holder string before handing the repo to Jupiter
-- add CI before handing the repo to Jupiter
+- confirm CI continues to run formatting and tests
+- confirm the license header and copyright holder
+- keep a changelog for externally shared revisions
 
-This crate is intended to satisfy Jupiter's DEX integration expectation that the SDK remains forkable, deterministic, and free of runtime network access.
+This crate is intended to satisfy the SDK side of Jupiter's DEX integration expectations: forkable, deterministic, and free of runtime network access.

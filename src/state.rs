@@ -1,5 +1,4 @@
-use solana_sdk::pubkey;
-use solana_sdk::pubkey::Pubkey;
+use solana_pubkey::{pubkey, Pubkey};
 
 use crate::QuoteError;
 

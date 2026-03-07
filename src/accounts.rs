@@ -1,9 +1,12 @@
 use crate::{PoolSnapshot, WSOL_MINT};
-use solana_sdk::{instruction::AccountMeta, pubkey, pubkey::Pubkey};
+use solana_instruction::AccountMeta;
+use solana_pubkey::{pubkey, Pubkey};
 
 pub const BONDING_CURVE_LABEL: &str = "Bonding Curve";
 pub const BONDING_CURVE_PROGRAM_ID: Pubkey =
     pubkey!("CURVEmPpijXDTNdqrA9PGP1io2rkgiVXH26xdXVGLLfz");
+pub const TOKEN_PROGRAM_ID: Pubkey = pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+pub const TOKEN_2022_PROGRAM_ID: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 pub const BONDING_CURVE_SWAP_ACCOUNTS_LEN: usize = 16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,8 +35,8 @@ pub fn build_swap_account_metas(
         AccountMeta::new(snapshot.base_vault, false),
         AccountMeta::new(snapshot.quote_vault, false),
         AccountMeta::new_readonly(params.token_transfer_authority, true),
-        AccountMeta::new_readonly(spl_token_2022::ID, false),
-        AccountMeta::new_readonly(spl_token::ID, false),
+        AccountMeta::new_readonly(TOKEN_2022_PROGRAM_ID, false),
+        AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         referral_account_meta(params.referral_token_account, params.referral_placeholder),
         AccountMeta::new_readonly(event_authority(), false),
         AccountMeta::new_readonly(BONDING_CURVE_PROGRAM_ID, false),
@@ -102,10 +105,7 @@ mod tests {
             AccountMeta::new_readonly(BONDING_CURVE_PROGRAM_ID, false)
         );
         assert_eq!(metas[1], AccountMeta::new_readonly(config_address(), false));
-        assert_eq!(
-            metas[3],
-            AccountMeta::new_readonly(pool_authority(), false)
-        );
+        assert_eq!(metas[3], AccountMeta::new_readonly(pool_authority(), false));
         assert_eq!(metas[2], AccountMeta::new(pool, false));
         assert_eq!(metas[4], AccountMeta::new(source_token_account, false));
         assert_eq!(metas[5], AccountMeta::new(destination_token_account, false));
@@ -116,9 +116,12 @@ mod tests {
         assert_eq!(metas[7], AccountMeta::new_readonly(WSOL_MINT, false));
         assert_eq!(
             metas[11],
-            AccountMeta::new_readonly(spl_token_2022::ID, false)
+            AccountMeta::new_readonly(TOKEN_2022_PROGRAM_ID, false)
         );
-        assert_eq!(metas[12], AccountMeta::new_readonly(spl_token::ID, false));
+        assert_eq!(
+            metas[12],
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false)
+        );
         assert_eq!(
             metas[10],
             AccountMeta::new_readonly(token_transfer_authority, true)

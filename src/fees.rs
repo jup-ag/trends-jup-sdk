@@ -103,7 +103,7 @@ fn calc_fee(amount: u64, fee_rate: u16) -> Result<u64, QuoteError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use solana_sdk::pubkey::Pubkey;
+    use solana_pubkey::Pubkey;
 
     fn snapshot() -> PoolSnapshot {
         PoolSnapshot {

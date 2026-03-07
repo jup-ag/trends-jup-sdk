@@ -12,11 +12,16 @@ include = [
     "CHANGELOG.md",
     "LICENSE",
     "extraction_checklist.md",
-    "handoff/**",
 ]
 
+[features]
+default = []
+jupiter-adapter = ["dep:anyhow", "dep:jupiter-amm-interface", "dep:rust_decimal"]
+
 [dependencies]
-solana-sdk = "2.3.1"
-spl-token = { version = "8.0.0", features = ["no-entrypoint"] }
-spl-token-2022 = { version = "9", features = ["no-entrypoint"] }
+anyhow = { version = "1", optional = true }
+jupiter-amm-interface = { version = "0.6.1", optional = true }
+rust_decimal = { version = "1.40.0", optional = true }
+solana-instruction = "=3.0.0"
+solana-pubkey = { version = "=3.0.0", features = ["curve25519"] }
 thiserror = "1"

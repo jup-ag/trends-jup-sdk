@@ -1,68 +1,86 @@
 # Bonding Curve SDK Extraction Checklist
 
-Use this checklist when moving `bonding-curve-sdk` into its own repository for Jupiter review or handoff.
+Use this checklist when handing this repository to Jupiter or copying it into a standalone public repo.
 
-## Files To Copy
+## 1. Files To Include
 
-- `bonding-curve-sdk/Cargo.toml`
-- `bonding-curve-sdk/README.md`
-- `bonding-curve-sdk/LICENSE`
-- `bonding-curve-sdk/CHANGELOG.md`
-- `bonding-curve-sdk/handoff/bonding_curve_amm.rs`
-- `bonding-curve-sdk/handoff/integration_notes.md`
-- `bonding-curve-sdk/src/accounts.rs`
-- `bonding-curve-sdk/src/errors.rs`
-- `bonding-curve-sdk/src/fees.rs`
-- `bonding-curve-sdk/src/lib.rs`
-- `bonding-curve-sdk/src/math.rs`
-- `bonding-curve-sdk/src/quote.rs`
-- `bonding-curve-sdk/src/state.rs`
+Copy these files as a minimum handoff package:
 
-## Cargo Metadata To Fill Before Delivery
+- `Cargo.toml`
+- `Cargo.lock`
+- `README.md`
+- `LICENSE`
+- `CHANGELOG.md`
+- `extraction_checklist.md`
+- `src/jupiter_adapter.rs`
+- `src/accounts.rs`
+- `src/errors.rs`
+- `src/fees.rs`
+- `src/lib.rs`
+- `src/math.rs`
+- `src/quote.rs`
+- `src/state.rs`
+
+## 2. Cargo Metadata To Fill
+
+Before delivery, fill these fields in `Cargo.toml`:
 
 - `repository`
 - `homepage`
 - `documentation`
-- `authors` if you want them visible in crates.io metadata
+- `authors`, if you want explicit author metadata in the crate
 
-## Repository Files To Add
+## 3. Repository Hygiene
 
-- `LICENSE`
-- `CHANGELOG.md`
+Add or confirm the following repository-level files:
+
 - `.gitignore`
-- CI workflow that runs:
-  - `cargo fmt --check`
-  - `cargo test`
+- CI workflow that runs `cargo fmt --check` and `cargo test`
+- CI workflow that runs `cargo test --features jupiter-adapter`
+- any security or audit references you plan to share with Jupiter
 
-Review before delivery:
+Before delivery:
 
-- confirm the copyright holder in `LICENSE`
-- confirm the version in `CHANGELOG.md`
+- confirm the license wording and copyright holder
+- confirm the crate version and changelog entry
+- confirm the README still matches the current integration boundary
 
-## README Expectations
+## 4. README Expectations
 
-Make sure the standalone repo README still explains:
+Make sure the README clearly explains:
 
-- what the crate does
+- what the crate owns
 - what stays outside the crate
-- current referral quote semantics
-- how Jupiter should call the SDK from an `Amm` adapter
+- the current referral quote behavior
+- how Jupiter should call the SDK from an adapter
 - which commands validate the crate locally
 
-## Validation Commands
+## 5. Validation Commands
 
-Run these before handing the repo to Jupiter:
+Run these before handing the repository to Jupiter:
 
 ```bash
 cargo fmt --check
 cargo test
+cargo test --features jupiter-adapter
 ```
 
-## Handoff Notes For Jupiter
+## 6. Jupiter Handoff Summary
 
-Include these points in the repo description or handoff message:
+Include these points in the handoff message:
 
 - the crate is deterministic and does not perform network calls
-- it owns Bonding Curve quote math, fee logic, pool parsing, venue metadata, and ABI-order account metas
-- it does not own Jupiter `Amm` trait glue
-- referral-aware quote is supported in the SDK, but current Jupiter `Amm::quote()` integration may still choose a no-referral policy if referrer context is absent
+- it owns pool parsing, quote math, fee logic, venue metadata, and ABI-order account metas
+- it does not own Jupiter `Amm` glue, loader registration, or execution routing
+- the compile-checked adapter lives in `src/jupiter_adapter.rs`
+- the SDK supports referral-aware quote math, but the current adapter keeps quote-time policy at no-referral until referrer context is available
+
+## 7. Remaining Jupiter-Side Work
+
+The receiving integration repo still needs to:
+
+- enable, compile, and register `BondingCurveAmm`
+- wire the `Swap::MeteoraDynamicBondingCurveSwapWithRemainingAccounts` execution path
+- add snapshot-based quote tests
+- add swap-account-metas shape tests
+- add execution or simulation parity tests
