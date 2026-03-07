@@ -1,0 +1,22 @@
+[package]
+name = "bonding-curve-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "Pure Rust Bonding Curve quoting SDK for Jupiter AMM integration"
+license = "MIT"
+readme = "README.md"
+keywords = ["solana", "jupiter", "amm", "bonding-curve"]
+include = [
+    "src/**",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "extraction_checklist.md",
+    "handoff/**",
+]
+
+[dependencies]
+solana-sdk = "2.3.1"
+spl-token = { version = "8.0.0", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "9", features = ["no-entrypoint"] }
+thiserror = "1"
