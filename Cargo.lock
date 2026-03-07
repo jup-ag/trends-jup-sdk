@@ -152,8 +152,10 @@ name = "bonding-curve-sdk"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "jupiter-amm-interface",
  "rust_decimal",
+ "solana-account",
  "solana-instruction",
  "solana-pubkey 3.0.0",
  "thiserror 1.0.69",

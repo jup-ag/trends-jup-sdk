@@ -12,6 +12,7 @@ Copy these files as a minimum handoff package:
 - `LICENSE`
 - `CHANGELOG.md`
 - `extraction_checklist.md`
+- `tests/fixtures/mainnet_pool_8r9aukf8.b64`
 - `src/jupiter_adapter.rs`
 - `src/accounts.rs`
 - `src/errors.rs`
@@ -73,6 +74,7 @@ Include these points in the handoff message:
 - it owns pool parsing, quote math, fee logic, venue metadata, and ABI-order account metas
 - it does not own Jupiter `Amm` glue, loader registration, or execution routing
 - the compile-checked adapter lives in `src/jupiter_adapter.rs`
+- the repository includes a real mainnet pool fixture for snapshot and adapter regression tests
 - the SDK supports referral-aware quote math, but the current adapter keeps quote-time policy at no-referral until referrer context is available
 
 ## 7. Remaining Jupiter-Side Work
@@ -81,6 +83,4 @@ The receiving integration repo still needs to:
 
 - enable, compile, and register `BondingCurveAmm`
 - wire the `Swap::MeteoraDynamicBondingCurveSwapWithRemainingAccounts` execution path
-- add snapshot-based quote tests
-- add swap-account-metas shape tests
 - add execution or simulation parity tests

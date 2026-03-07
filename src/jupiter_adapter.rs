@@ -182,6 +182,10 @@ fn to_jupiter_quote(in_amount: u64, sdk_quote: crate::QuoteResult) -> Quote {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use jupiter_amm_interface::{FeeMode, QuoteMintToReferrer};
+    use solana_account::Account;
+    use solana_pubkey::pubkey;
 
     fn sample_snapshot() -> PoolSnapshot {
         PoolSnapshot {
@@ -192,6 +196,28 @@ mod tests {
             quote_reserve: 10_000_000_000,
             virtual_base_reserve: 1_000_000_000_000_000,
             virtual_quote_reserve: 20_000_000_000,
+        }
+    }
+
+    fn mainnet_fixture_data() -> Vec<u8> {
+        STANDARD
+            .decode(include_str!("../tests/fixtures/mainnet_pool_8r9aukf8.b64").trim())
+            .expect("mainnet fixture should decode")
+    }
+
+    fn mainnet_pool_key() -> Pubkey {
+        pubkey!("8r9aukF8nPpk33R7eTZW7nkVuLq2jrENVyvKmoSNoHfU")
+    }
+
+    fn keyed_account(data: Vec<u8>) -> KeyedAccount {
+        KeyedAccount {
+            key: mainnet_pool_key(),
+            account: Account {
+                data,
+                owner: BONDING_CURVE_PROGRAM_ID,
+                ..Account::default()
+            },
+            params: None,
         }
     }
 
@@ -220,5 +246,138 @@ mod tests {
                 (TOKEN_PROGRAM_ID, "spl_token".to_string()),
             ]
         );
+    }
+
+    #[test]
+    fn adapter_quotes_real_mainnet_fixture() {
+        let keyed_account = keyed_account(mainnet_fixture_data());
+        let amm = BondingCurveAmm::from_keyed_account(&keyed_account, &AmmContext::default())
+            .expect("fixture account should build adapter");
+
+        let quote = amm
+            .quote(&QuoteParams {
+                amount: 1_000_000,
+                input_mint: WSOL_MINT,
+                output_mint: pubkey!("CMNKDgGkQmVRr8RXV3gCrceGdCmm5w4ZBLgA6SdvTRND"),
+                swap_mode: SwapMode::ExactIn,
+                fee_mode: FeeMode::Normal,
+            })
+            .expect("fixture quote should succeed");
+
+        assert_eq!(quote.out_amount, 48_997_599_117);
+        assert_eq!(quote.fee_amount, 20_000);
+        assert_eq!(quote.fee_mint, WSOL_MINT);
+        assert_eq!(
+            amm.get_reserve_mints().as_slice(),
+            &[
+                pubkey!("CMNKDgGkQmVRr8RXV3gCrceGdCmm5w4ZBLgA6SdvTRND"),
+                WSOL_MINT,
+            ]
+        );
+    }
+
+    #[test]
+    fn adapter_builds_swap_with_referral_for_real_fixture() {
+        let keyed_account = keyed_account(mainnet_fixture_data());
+        let amm = BondingCurveAmm::from_keyed_account(&keyed_account, &AmmContext::default())
+            .expect("fixture account should build adapter");
+        let source_token_account = Pubkey::new_unique();
+        let destination_token_account = Pubkey::new_unique();
+        let token_transfer_authority = Pubkey::new_unique();
+        let jupiter_program_id = Pubkey::new_unique();
+        let referral_token_account = Pubkey::new_unique();
+        let mut quote_mint_to_referrer = QuoteMintToReferrer::default();
+        quote_mint_to_referrer.insert(WSOL_MINT, referral_token_account);
+
+        let swap = amm
+            .get_swap_and_account_metas(&SwapParams {
+                swap_mode: SwapMode::ExactIn,
+                in_amount: 1_000_000,
+                out_amount: 48_997_599_117,
+                source_mint: WSOL_MINT,
+                destination_mint: pubkey!("CMNKDgGkQmVRr8RXV3gCrceGdCmm5w4ZBLgA6SdvTRND"),
+                source_token_account,
+                destination_token_account,
+                token_transfer_authority,
+                user: Pubkey::new_unique(),
+                payer: Pubkey::new_unique(),
+                quote_mint_to_referrer: Some(&quote_mint_to_referrer),
+                jupiter_program_id: &jupiter_program_id,
+                missing_dynamic_accounts_as_default: false,
+            })
+            .expect("swap metas should build");
+
+        assert_eq!(
+            swap.swap,
+            Swap::MeteoraDynamicBondingCurveSwapWithRemainingAccounts
+        );
+        assert_eq!(swap.account_metas.len(), BONDING_CURVE_SWAP_ACCOUNTS_LEN);
+        assert_eq!(
+            swap.account_metas[2],
+            solana_instruction::AccountMeta::new(mainnet_pool_key(), false)
+        );
+        assert_eq!(
+            swap.account_metas[4],
+            solana_instruction::AccountMeta::new(source_token_account, false)
+        );
+        assert_eq!(
+            swap.account_metas[5],
+            solana_instruction::AccountMeta::new(destination_token_account, false)
+        );
+        assert_eq!(
+            swap.account_metas[10],
+            solana_instruction::AccountMeta::new_readonly(token_transfer_authority, true)
+        );
+        assert_eq!(
+            swap.account_metas[13],
+            solana_instruction::AccountMeta::new(referral_token_account, false)
+        );
+    }
+
+    #[test]
+    fn adapter_update_reloads_pool_state_from_account_map() {
+        let keyed_account = keyed_account(mainnet_fixture_data());
+        let mut amm = BondingCurveAmm::from_keyed_account(&keyed_account, &AmmContext::default())
+            .expect("fixture account should build adapter");
+
+        let before = amm
+            .quote(&QuoteParams {
+                amount: 1_000_000,
+                input_mint: WSOL_MINT,
+                output_mint: pubkey!("CMNKDgGkQmVRr8RXV3gCrceGdCmm5w4ZBLgA6SdvTRND"),
+                swap_mode: SwapMode::ExactIn,
+                fee_mode: FeeMode::Normal,
+            })
+            .expect("initial quote should succeed");
+
+        let mut updated_data = mainnet_fixture_data();
+        updated_data[160..168].copy_from_slice(&40_000_000_000u64.to_le_bytes());
+
+        let mut account_map = AccountMap::default();
+        account_map.insert(
+            mainnet_pool_key(),
+            Account {
+                data: updated_data,
+                owner: BONDING_CURVE_PROGRAM_ID,
+                ..Account::default()
+            },
+        );
+
+        amm.update(&account_map)
+            .expect("update should reload state");
+
+        let after = amm
+            .quote(&QuoteParams {
+                amount: 1_000_000,
+                input_mint: WSOL_MINT,
+                output_mint: pubkey!("CMNKDgGkQmVRr8RXV3gCrceGdCmm5w4ZBLgA6SdvTRND"),
+                swap_mode: SwapMode::ExactIn,
+                fee_mode: FeeMode::Normal,
+            })
+            .expect("updated quote should succeed");
+
+        assert_eq!(before.out_amount, 48_997_599_117);
+        assert_eq!(after.out_amount, 24_499_399_764);
+        assert!(after.out_amount < before.out_amount);
     }
 }

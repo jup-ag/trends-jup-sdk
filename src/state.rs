@@ -65,6 +65,14 @@ fn read_u64(data: &[u8], offset: usize) -> Result<u64, QuoteError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use solana_pubkey::pubkey;
+
+    fn mainnet_fixture_data() -> Vec<u8> {
+        STANDARD
+            .decode(include_str!("../tests/fixtures/mainnet_pool_8r9aukf8.b64").trim())
+            .expect("mainnet fixture should decode")
+    }
 
     #[test]
     fn parses_pool_snapshot_from_account_data() {
@@ -110,5 +118,27 @@ mod tests {
 
         let err = PoolSnapshot::try_from_account_data(&data).unwrap_err();
         assert_eq!(err, QuoteError::UnexpectedPoolDiscriminator);
+    }
+
+    #[test]
+    fn parses_expected_mainnet_pool_snapshot() {
+        let snapshot = PoolSnapshot::try_from_account_data(&mainnet_fixture_data()).unwrap();
+
+        assert_eq!(
+            snapshot.base_mint,
+            pubkey!("CMNKDgGkQmVRr8RXV3gCrceGdCmm5w4ZBLgA6SdvTRND")
+        );
+        assert_eq!(
+            snapshot.base_vault,
+            pubkey!("BKCjUvubFHFydBPH9AUNFMRfmQa1gSgV3HHE8Gk92EvV")
+        );
+        assert_eq!(
+            snapshot.quote_vault,
+            pubkey!("AzqHNkVvsRjX5vD2NpKHtXq9XEJWET1V7HDQTzDPJq4N")
+        );
+        assert_eq!(snapshot.base_reserve, 1_000_000_000_000_000);
+        assert_eq!(snapshot.quote_reserve, 0);
+        assert_eq!(snapshot.virtual_base_reserve, 1_000_000_000_000_000);
+        assert_eq!(snapshot.virtual_quote_reserve, 20_000_000_000);
     }
 }

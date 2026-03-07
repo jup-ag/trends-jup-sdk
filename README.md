@@ -17,7 +17,7 @@ This repository does not yet contain a fully wired Jupiter integration:
 
 - no loader registration
 - no Jupiter execution-layer plumbing
-- no snapshot-based or route-execution tests
+- no route-execution or simulation-parity tests
 
 ## Design Goals
 
@@ -92,6 +92,13 @@ cargo test --features jupiter-adapter
 The feature exports `bonding_curve_sdk::BondingCurveAmm` and compile-checks the adapter
 against `jupiter-amm-interface`.
 
+Current test coverage includes a real mainnet pool fixture for:
+
+- `PoolSnapshot::try_from_account_data`
+- adapter quote output on real account bytes
+- adapter swap account-meta shape with referral context
+- adapter `update()` state refresh behavior
+
 ## Minimal Adapter Flow
 
 ```rust
@@ -135,6 +142,8 @@ cargo fmt --check
 cargo test
 cargo test --features jupiter-adapter
 ```
+
+The fixture currently snapshots mainnet pool `8r9aukF8nPpk33R7eTZW7nkVuLq2jrENVyvKmoSNoHfU`.
 
 ## Repository Guide
 
