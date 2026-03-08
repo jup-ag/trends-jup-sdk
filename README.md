@@ -107,7 +107,7 @@ Current test coverage includes a real mainnet pool fixture for:
 ## Minimal Adapter Flow
 
 ```rust
-use bonding_curve_sdk::{quote_for_mints, PoolSnapshot};
+use bonding_curve_sdk::{quote_for_mints, PoolSnapshot, get_fee_denominator};
 
 let snapshot = PoolSnapshot::try_from_account_data(&pool_account.data)?;
 let sdk_quote = quote_for_mints(
@@ -118,13 +118,15 @@ let sdk_quote = quote_for_mints(
     false,
 )?;
 
+let bps = sdk_quote.fee_breakdown.creator_fee_bps.saturating_add(sdk_quote.fee_breakdown.protocol_fee_bps);
+
 let jupiter_quote = jupiter_amm_interface::Quote {
     in_amount: amount_in,
     out_amount: sdk_quote.amount_out,
     fee_amount: sdk_quote.fee_amount,
     fee_mint: sdk_quote.fee_mint,
-    fee_pct: rust_decimal::Decimal::from(sdk_quote.fee_amount)
-        / rust_decimal::Decimal::from(amount_in),
+    fee_pct: rust_decimal::Decimal::from(bps)
+        / rust_decimal::Decimal::from(get_fee_denominator()),
 };
 ```
 
