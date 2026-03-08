@@ -25,7 +25,8 @@ pub use accounts::{
 };
 pub use errors::QuoteError;
 pub use fees::{
-    calculate_fees, calculate_market_cap, get_fee_rates, get_referral_fee_rate, FeeBreakdown,
+    calculate_fees, calculate_market_cap, get_fee_denominator, get_fee_rates,
+    get_referral_fee_rate, FeeBreakdown,
 };
 #[cfg(feature = "jupiter-adapter")]
 pub use jupiter_adapter::BondingCurveAmm;

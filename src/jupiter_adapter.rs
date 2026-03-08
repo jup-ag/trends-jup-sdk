@@ -173,11 +173,11 @@ fn referral_token_account(swap_params: &SwapParams) -> Option<Pubkey> {
 }
 
 fn to_jupiter_quote(in_amount: u64, sdk_quote: crate::QuoteResult) -> Quote {
-    let fee_pct = if in_amount == 0 {
-        Decimal::ZERO
-    } else {
-        Decimal::from(sdk_quote.fee_amount) / Decimal::from(in_amount)
-    };
+    let creator_fee_bps = sdk_quote.fee_breakdown.creator_fee_bps;
+    let protocol_fee_bps = sdk_quote.fee_breakdown.protocol_fee_bps;
+
+    let bps = creator_fee_bps.saturating_add(protocol_fee_bps);
+    let fee_pct = Decimal::from(bps) / Decimal::from(crate::get_fee_denominator());
 
     Quote {
         in_amount,
@@ -444,5 +444,63 @@ mod tests {
         assert!(err
             .to_string()
             .contains("Unexpected owner for bonding curve pool"));
+    }
+
+    #[test]
+    fn to_jupiter_quote_calculates_fee_pct_from_bps() {
+        let sdk_quote = crate::QuoteResult {
+            amount_in: 1_000_000,
+            amount_out: 500_000,
+            fee_amount: 5_000,
+            fee_mint: crate::WSOL_MINT,
+            fee_breakdown: crate::FeeBreakdown {
+                creator_fee: 2_500,
+                protocol_fee: 2_500,
+                referral_fee: 0,
+                total_fee: 5_000,
+                creator_fee_bps: 50,
+                protocol_fee_bps: 50,
+            },
+            market_cap: 100_000_000_000_000,
+        };
+
+        // 50 bps + 50 bps = 100 bps = 0.0100
+        let quote = to_jupiter_quote(1_000_000, sdk_quote);
+        assert_eq!(
+            quote.fee_pct,
+            rust_decimal::Decimal::from(100)
+                / rust_decimal::Decimal::from(crate::get_fee_denominator())
+        );
+    }
+
+    #[test]
+    fn to_jupiter_quote_avoids_division_by_amount() {
+        // Provide extreme token to WSOL ratio where fee_amount is tiny but in_amount is huge.
+        // If it were using `fee_amount / in_amount`, fee_pct would be completely incorrect.
+        let in_amount = 1_000_000_000;
+        let sdk_quote = crate::QuoteResult {
+            amount_in: in_amount,
+            amount_out: 10,
+            fee_amount: 1, // 1 WSOL lamport fee
+            fee_mint: crate::WSOL_MINT,
+            fee_breakdown: crate::FeeBreakdown {
+                creator_fee: 1,
+                protocol_fee: 0,
+                referral_fee: 0,
+                total_fee: 1,
+                creator_fee_bps: 100,
+                protocol_fee_bps: 100, // 200 bps total (2%)
+            },
+            market_cap: 1_000_000, // Not relevant here
+        };
+
+        let quote = to_jupiter_quote(in_amount, sdk_quote);
+
+        // Ensure it uses the BPS strictly instead of 1 / 1_000_000_000
+        assert_eq!(
+            quote.fee_pct,
+            rust_decimal::Decimal::from(200)
+                / rust_decimal::Decimal::from(crate::get_fee_denominator())
+        );
     }
 }

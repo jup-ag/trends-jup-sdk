@@ -46,6 +46,10 @@ pub fn calculate_market_cap(snapshot: &PoolSnapshot) -> Result<u64, QuoteError> 
     try_u64(market_cap / u128::from(snapshot.virtual_base_reserve))
 }
 
+pub fn get_fee_denominator() -> u16 {
+    FEE_DENOMINATOR
+}
+
 pub fn get_fee_rates(market_cap: u64) -> (u16, u16) {
     for tier in FEE_TIERS {
         if market_cap <= tier.0 {
