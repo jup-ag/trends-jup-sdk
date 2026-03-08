@@ -4,8 +4,6 @@ use thiserror::Error;
 pub enum QuoteError {
     #[error("Invalid zero amount")]
     InvalidZeroAmount,
-    #[error("Unsupported trade direction")]
-    UnsupportedDirection,
     #[error("Unsupported mint pair")]
     UnsupportedPair,
     #[error("Pool account data is too small")]

@@ -22,14 +22,15 @@ Copy these files as a minimum handoff package:
 - `src/quote.rs`
 - `src/state.rs`
 
-## 2. Cargo Metadata To Fill
+## 2. Cargo Metadata To Verify
 
-Before delivery, fill these fields in `Cargo.toml`:
+Before delivery, verify these fields in `Cargo.toml`:
 
 - `repository`
 - `homepage`
 - `documentation`
 - `authors`, if you want explicit author metadata in the crate
+- pinned dependency compatibility for `jupiter-amm-interface`
 
 ## 3. Repository Hygiene
 
@@ -62,8 +63,10 @@ Run these before handing the repository to Jupiter:
 
 ```bash
 cargo fmt --check
-cargo test
-cargo test --features jupiter-adapter
+cargo test --locked
+cargo test --locked --features jupiter-adapter
+cargo clippy --all-targets --all-features -- -D warnings
+cargo package --allow-dirty
 ```
 
 ## 6. Jupiter Handoff Summary
@@ -76,6 +79,8 @@ Include these points in the handoff message:
 - the compile-checked adapter lives in `src/jupiter_adapter.rs`
 - the repository includes a real mainnet pool fixture for snapshot and adapter regression tests
 - the SDK supports referral-aware quote math, but the current adapter keeps quote-time policy at no-referral until referrer context is available
+- the adapter enforces exact-in mode for both quote and swap-meta paths
+- adapter `update()` validates that the pool owner matches the bonding curve program id
 
 ## 7. Remaining Jupiter-Side Work
 

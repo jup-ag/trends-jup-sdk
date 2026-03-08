@@ -1,7 +1,7 @@
 use anyhow::{ensure, Result};
 use jupiter_amm_interface::{
-    single_program_amm, try_get_account_data, AccountMap, Amm, AmmContext, KeyedAccount, Quote,
-    QuoteParams, SingleProgramAmm, Swap, SwapAndAccountMetas, SwapMode, SwapParams,
+    single_program_amm, try_get_account_data_and_owner, AccountMap, Amm, AmmContext, KeyedAccount,
+    Quote, QuoteParams, SingleProgramAmm, Swap, SwapAndAccountMetas, SwapMode, SwapParams,
 };
 use rust_decimal::Decimal;
 use solana_pubkey::Pubkey;
@@ -63,7 +63,11 @@ impl Amm for BondingCurveAmm {
     }
 
     fn update(&mut self, account_map: &AccountMap) -> Result<()> {
-        let pool_account_data = try_get_account_data(account_map, &self.key)?;
+        let (pool_account_data, owner) = try_get_account_data_and_owner(account_map, &self.key)?;
+        ensure!(
+            *owner == BONDING_CURVE_PROGRAM_ID,
+            "Unexpected owner for bonding curve pool"
+        );
         self.state = PoolSnapshot::try_from_account_data(pool_account_data)?;
         Ok(())
     }
@@ -88,6 +92,11 @@ impl Amm for BondingCurveAmm {
     }
 
     fn get_swap_and_account_metas(&self, swap_params: &SwapParams) -> Result<SwapAndAccountMetas> {
+        ensure!(
+            swap_params.swap_mode == SwapMode::ExactIn,
+            "Bonding curve AMM only supports exact-in swaps"
+        );
+
         self.ensure_supported_pair(
             swap_params.source_mint,
             swap_params.destination_mint,
@@ -335,6 +344,38 @@ mod tests {
     }
 
     #[test]
+    fn adapter_rejects_exact_out_swap_metas() {
+        let keyed_account = keyed_account(mainnet_fixture_data());
+        let amm = BondingCurveAmm::from_keyed_account(&keyed_account, &AmmContext::default())
+            .expect("fixture account should build adapter");
+
+        let swap_result = amm.get_swap_and_account_metas(&SwapParams {
+            swap_mode: SwapMode::ExactOut,
+            in_amount: 1_000_000,
+            out_amount: 48_997_599_117,
+            source_mint: WSOL_MINT,
+            destination_mint: pubkey!("CMNKDgGkQmVRr8RXV3gCrceGdCmm5w4ZBLgA6SdvTRND"),
+            source_token_account: Pubkey::new_unique(),
+            destination_token_account: Pubkey::new_unique(),
+            token_transfer_authority: Pubkey::new_unique(),
+            user: Pubkey::new_unique(),
+            payer: Pubkey::new_unique(),
+            quote_mint_to_referrer: None,
+            jupiter_program_id: &Pubkey::new_unique(),
+            missing_dynamic_accounts_as_default: false,
+        });
+
+        let err = match swap_result {
+            Ok(_) => panic!("exact-out swaps should be rejected"),
+            Err(err) => err,
+        };
+
+        assert!(err
+            .to_string()
+            .contains("Bonding curve AMM only supports exact-in swaps"));
+    }
+
+    #[test]
     fn adapter_update_reloads_pool_state_from_account_map() {
         let keyed_account = keyed_account(mainnet_fixture_data());
         let mut amm = BondingCurveAmm::from_keyed_account(&keyed_account, &AmmContext::default())
@@ -379,5 +420,29 @@ mod tests {
         assert_eq!(before.out_amount, 48_997_599_117);
         assert_eq!(after.out_amount, 24_499_399_764);
         assert!(after.out_amount < before.out_amount);
+    }
+
+    #[test]
+    fn adapter_update_rejects_unexpected_owner() {
+        let keyed_account = keyed_account(mainnet_fixture_data());
+        let mut amm = BondingCurveAmm::from_keyed_account(&keyed_account, &AmmContext::default())
+            .expect("fixture account should build adapter");
+
+        let mut account_map = AccountMap::default();
+        account_map.insert(
+            mainnet_pool_key(),
+            Account {
+                data: mainnet_fixture_data(),
+                owner: Pubkey::new_unique(),
+                ..Account::default()
+            },
+        );
+
+        let err = amm
+            .update(&account_map)
+            .expect_err("update should reject non-program owner");
+        assert!(err
+            .to_string()
+            .contains("Unexpected owner for bonding curve pool"));
     }
 }

@@ -208,7 +208,8 @@ mod tests {
             assert!(prev.1 <= FEE_DENOMINATOR / 2);
             assert!(next.1 <= FEE_DENOMINATOR / 2);
         }
-        assert!(DEFAULT_REFERRAL_FEE <= FEE_DENOMINATOR / 2);
+        let default_referral_fee_rate = get_referral_fee_rate(u64::MAX);
+        assert!(default_referral_fee_rate <= FEE_DENOMINATOR / 2);
     }
 
     #[test]

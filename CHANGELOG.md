@@ -9,3 +9,9 @@ All notable changes to this repository will be documented in this file.
 - Feature-backed Jupiter adapter with compile-time interface checks
 - Real mainnet pool fixture coverage for snapshot parsing, adapter quotes, metas, and updates
 - Documentation cleanup for repository scope, delivery workflow, and adapter usage
+- Enforced `ExactIn` mode in adapter swap-meta construction to match quote-mode constraints
+- Added owner validation on adapter `update()` and regression tests for `ExactOut` + owner mismatch rejection
+- Removed unused `UnsupportedDirection` error variant
+- Fixed strict `clippy -D warnings` compatibility in fee-tier tests
+- Included fixture files in crate packaging and filled Cargo package metadata links
+- Pinned `jupiter-amm-interface` dependency to `=0.6.1` for integration consistency

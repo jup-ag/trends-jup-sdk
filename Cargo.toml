@@ -6,8 +6,12 @@ description = "Pure Rust Bonding Curve quoting SDK for Jupiter AMM integration"
 license = "MIT"
 readme = "README.md"
 keywords = ["solana", "jupiter", "amm", "bonding-curve"]
+repository = "https://github.com/trends-fun/bonding-curve-jup-sdk"
+homepage = "https://github.com/trends-fun/bonding-curve-jup-sdk"
+documentation = "https://github.com/trends-fun/bonding-curve-jup-sdk#readme"
 include = [
     "src/**",
+    "tests/fixtures/**",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
@@ -20,7 +24,7 @@ jupiter-adapter = ["dep:anyhow", "dep:jupiter-amm-interface", "dep:rust_decimal"
 
 [dependencies]
 anyhow = { version = "1", optional = true }
-jupiter-amm-interface = { version = "0.6.1", optional = true }
+jupiter-amm-interface = { version = "=0.6.1", optional = true }
 rust_decimal = { version = "1.40.0", optional = true }
 solana-instruction = "=3.0.0"
 solana-pubkey = { version = "=3.0.0", features = ["curve25519"] }

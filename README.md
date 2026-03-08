@@ -8,9 +8,11 @@ This repository contains the SDK portion of the integration:
 
 - deterministic pool parsing from account data
 - exact-in quote math for both directions
+- exact-in enforcement in both quote and swap-meta paths
 - on-chain fee semantics, including referral-aware fee splitting
 - venue metadata and PDA helpers
 - swap account metas in contract ABI order
+- adapter state updates that validate pool account ownership
 - an optional compile-checked Jupiter adapter behind the `jupiter-adapter` feature
 
 This repository does not yet contain a fully wired Jupiter integration:
@@ -78,6 +80,7 @@ The receiving Jupiter integration repo should:
 Current adapter assumptions:
 
 - `jupiter_amm_interface` is available in the target repo
+- this crate currently pins `jupiter-amm-interface` to `=0.6.1`
 - `Swap::MeteoraDynamicBondingCurveSwapWithRemainingAccounts` exists in the target execution path
 - the target repo wants a deterministic no-referral quote policy until quote-time referrer context is available
 
@@ -98,6 +101,8 @@ Current test coverage includes a real mainnet pool fixture for:
 - adapter quote output on real account bytes
 - adapter swap account-meta shape with referral context
 - adapter `update()` state refresh behavior
+- adapter `ExactOut` rejection on swap-meta construction
+- adapter `update()` rejection for unexpected account owner
 
 ## Minimal Adapter Flow
 
@@ -154,7 +159,8 @@ The fixture currently snapshots mainnet pool `8r9aukF8nPpk33R7eTZW7nkVuLq2jrENVy
 
 Before external handoff:
 
-- fill `repository`, `homepage`, and `documentation` in `Cargo.toml`
+- verify `repository`, `homepage`, and `documentation` in `Cargo.toml` are correct
+- verify the pinned `jupiter-amm-interface` version matches the target integration repo
 - confirm CI continues to run formatting and tests
 - confirm the license header and copyright holder
 - keep a changelog for externally shared revisions
