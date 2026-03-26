@@ -12,8 +12,6 @@ extern crate self as bonding_curve_sdk;
 mod accounts;
 mod errors;
 mod fees;
-#[cfg(feature = "jupiter-adapter")]
-mod jupiter_adapter;
 mod math;
 mod quote;
 mod state;
