@@ -1,6 +1,6 @@
-use crate::{PoolSnapshot, WSOL_MINT};
+use crate::{Pubkey, PoolSnapshot, WSOL_MINT};
 use solana_instruction::AccountMeta;
-use solana_pubkey::{pubkey, Pubkey};
+use solana_pubkey::pubkey;
 
 pub const BONDING_CURVE_LABEL: &str = "Trends";
 pub const BONDING_CURVE_PROGRAM_ID: Pubkey =
@@ -77,6 +77,7 @@ mod tests {
             quote_reserve: 10_000_000_000,
             virtual_base_reserve: 1_000_000_000_000_000,
             virtual_quote_reserve: 20_000_000_000,
+            is_migrated: false,
         }
     }
 

@@ -1,9 +1,9 @@
-use solana_pubkey::{pubkey, Pubkey};
+use solana_address::address;
 
-use crate::QuoteError;
+use crate::{Pubkey, QuoteError};
 
 pub const BONDING_CURVE_POOL_DISCRIMINATOR: [u8; 8] = [241, 154, 109, 4, 17, 177, 109, 188];
-pub const WSOL_MINT: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
+pub const WSOL_MINT: Pubkey = address!("So11111111111111111111111111111111111111112");
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PoolSnapshot {

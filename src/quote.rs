@@ -1,9 +1,8 @@
 use crate::{
     calculate_fees, calculate_market_cap,
     math::{checked_add_u128, checked_mul_u128, checked_sub, try_u64},
-    FeeBreakdown, PoolSnapshot, QuoteError, WSOL_MINT,
+    FeeBreakdown, PoolSnapshot, Pubkey, QuoteError, WSOL_MINT,
 };
-use solana_pubkey::Pubkey;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TradeDirection {
@@ -162,7 +161,7 @@ fn ensure_virtual_liquidity(snapshot: &PoolSnapshot) -> Result<(), QuoteError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use solana_pubkey::Pubkey;
+    use crate::Pubkey;
 
     fn snapshot() -> PoolSnapshot {
         PoolSnapshot {
@@ -173,6 +172,7 @@ mod tests {
             quote_reserve: 10_000_000_000,
             virtual_base_reserve: 1_000_000_000_000_000,
             virtual_quote_reserve: 20_000_000_000,
+            is_migrated: false,
         }
     }
 

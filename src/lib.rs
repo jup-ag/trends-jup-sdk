@@ -9,6 +9,8 @@
 
 extern crate self as bonding_curve_sdk;
 
+pub type Pubkey = solana_address::Address;
+
 mod accounts;
 mod errors;
 mod fees;
