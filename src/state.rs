@@ -14,6 +14,7 @@ pub struct PoolSnapshot {
     pub quote_reserve: u64,
     pub virtual_base_reserve: u64,
     pub virtual_quote_reserve: u64,
+    pub is_migrated: bool,
 }
 
 impl PoolSnapshot {
@@ -38,6 +39,7 @@ impl PoolSnapshot {
             quote_reserve: read_u64(body, 136)?,
             virtual_base_reserve: read_u64(body, 144)?,
             virtual_quote_reserve: read_u64(body, 152)?,
+            is_migrated: read_bool(body, 176)?,
         })
     }
 }
@@ -60,6 +62,13 @@ fn read_u64(data: &[u8], offset: usize) -> Result<u64, QuoteError> {
         .try_into()
         .map_err(|_| QuoteError::IntegerConversionOverflow)?;
     Ok(u64::from_le_bytes(array))
+}
+
+fn read_bool(data: &[u8], offset: usize) -> Result<bool, QuoteError> {
+    let bytes = data
+        .get(offset..offset + 1)
+        .ok_or(QuoteError::MissingU64Bytes(offset))?;
+    Ok(*bytes.get(0).unwrap_or(&0u8) == 1u8)
 }
 
 #[cfg(test)]
