@@ -30,6 +30,7 @@ jupiter-adapter = [
 anyhow = { version = "1", optional = true }
 jupiter-amm-interface = { version = ">=1.0.0-beta.0, <2", optional = true }
 rust_decimal = { version = "1.40.0", optional = true }
+solana-address = { version = "2.6.0", features = ["copy", "curve25519"] }
 solana-instruction = "3"
 solana-pubkey = { version = "3", features = ["curve25519"] }
 thiserror = "1"

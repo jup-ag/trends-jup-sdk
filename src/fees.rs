@@ -107,7 +107,7 @@ fn calc_fee(amount: u64, fee_rate: u16) -> Result<u64, QuoteError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use solana_pubkey::Pubkey;
+    use crate::Pubkey;
 
     fn snapshot() -> PoolSnapshot {
         PoolSnapshot {
@@ -118,6 +118,7 @@ mod tests {
             quote_reserve: 10_000_000_000,
             virtual_base_reserve: 1_000_000_000_000_000,
             virtual_quote_reserve: 20_000_000_000,
+            is_migrated: false,
         }
     }
 
