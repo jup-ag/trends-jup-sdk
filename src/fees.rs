@@ -70,15 +70,20 @@ pub fn get_referral_fee_rate(market_cap: u64) -> u16 {
     DEFAULT_REFERRAL_FEE
 }
 
+/// Calculate fees for a swap.
+///
+/// When `self_referral` is true, the referral fee is excluded from `total_fee`
+/// since it flows back to the user (self-referral discount).
 pub fn calculate_fees(
     market_cap: u64,
     amount: u64,
     has_referral: bool,
+    self_referral: bool,
 ) -> Result<FeeBreakdown, QuoteError> {
     let (creator_fee_bps, protocol_fee_bps) = get_fee_rates(market_cap);
     let creator_fee = calc_fee(amount, creator_fee_bps)?;
     let base_protocol_fee = calc_fee(amount, protocol_fee_bps)?;
-    let (protocol_fee, referral_fee) = if has_referral {
+    let (protocol_fee, referral_fee) = if has_referral || self_referral {
         let referral_fee_rate = get_referral_fee_rate(market_cap);
         let referral_fee = calc_fee(base_protocol_fee, referral_fee_rate)?;
         (base_protocol_fee.saturating_sub(referral_fee), referral_fee)
@@ -86,7 +91,11 @@ pub fn calculate_fees(
         (base_protocol_fee, 0)
     };
     let total_fee = checked_add(creator_fee, protocol_fee)?;
-    let total_fee = checked_add(total_fee, referral_fee)?;
+    let total_fee = if self_referral {
+        total_fee
+    } else {
+        checked_add(total_fee, referral_fee)?
+    };
 
     Ok(FeeBreakdown {
         creator_fee,
@@ -118,7 +127,7 @@ mod tests {
             quote_reserve: 10_000_000_000,
             virtual_base_reserve: 1_000_000_000_000_000,
             virtual_quote_reserve: 20_000_000_000,
-            is_migrated: false,
+            is_migrated: 0,
         }
     }
 
@@ -136,8 +145,8 @@ mod tests {
     }
 
     #[test]
-    fn splits_protocol_fee_for_referral() {
-        let fees = calculate_fees(1, 1_000_000, true).unwrap();
+    fn splits_protocol_fee_for_referral_no_self_referral() {
+        let fees = calculate_fees(1, 1_000_000, true, false).unwrap();
         assert_eq!(fees.creator_fee, 10_000);
         assert_eq!(fees.protocol_fee, 7_000);
         assert_eq!(fees.referral_fee, 3_000);
@@ -145,22 +154,32 @@ mod tests {
     }
 
     #[test]
+    fn splits_protocol_fee_with_self_referral() {
+        let fees = calculate_fees(1, 1_000_000, true, true).unwrap();
+        assert_eq!(fees.creator_fee, 10_000);
+        assert_eq!(fees.protocol_fee, 7_000);
+        assert_eq!(fees.referral_fee, 3_000);
+        // Self-referral: referral_fee flows back to user, excluded from total
+        assert_eq!(fees.total_fee, 17_000);
+    }
+
+    #[test]
     fn calculates_referral_fees_at_different_tiers() {
         let amount = 10_000_000;
 
-        let fees = calculate_fees(10_000_000_000_000, amount, true).unwrap();
+        let fees = calculate_fees(10_000_000_000_000, amount, true, false).unwrap();
         assert_eq!(fees.creator_fee, 90_000);
         assert_eq!(fees.protocol_fee, 63_000);
         assert_eq!(fees.referral_fee, 27_000);
         assert_eq!(fees.total_fee, 180_000);
 
-        let fees = calculate_fees(200_000_000_000_000, amount, true).unwrap();
+        let fees = calculate_fees(200_000_000_000_000, amount, true, false).unwrap();
         assert_eq!(fees.creator_fee, 65_000);
         assert_eq!(fees.protocol_fee, 52_000);
         assert_eq!(fees.referral_fee, 13_000);
         assert_eq!(fees.total_fee, 130_000);
 
-        let fees = calculate_fees(500_000_000_000_000, amount, true).unwrap();
+        let fees = calculate_fees(500_000_000_000_000, amount, true, false).unwrap();
         assert_eq!(fees.creator_fee, 50_000);
         assert_eq!(fees.protocol_fee, 42_500);
         assert_eq!(fees.referral_fee, 7_500);
@@ -236,8 +255,8 @@ mod tests {
         ];
 
         for market_cap in market_caps {
-            let with_referral = calculate_fees(market_cap, 1_000_000, true).unwrap();
-            let without_referral = calculate_fees(market_cap, 1_000_000, false).unwrap();
+            let with_referral = calculate_fees(market_cap, 1_000_000, true, false).unwrap();
+            let without_referral = calculate_fees(market_cap, 1_000_000, false, false).unwrap();
 
             assert_eq!(
                 with_referral.protocol_fee + with_referral.referral_fee,
@@ -248,14 +267,14 @@ mod tests {
 
     #[test]
     fn handles_very_small_amounts() {
-        let without_referral = calculate_fees(1_000_000_000_000, 1, false).unwrap();
+        let without_referral = calculate_fees(1_000_000_000_000, 1, false, false).unwrap();
         assert!(without_referral.total_fee <= 1);
         assert_eq!(
             without_referral.creator_fee + without_referral.protocol_fee,
             without_referral.total_fee
         );
 
-        let with_referral = calculate_fees(1_000_000_000_000, 1, true).unwrap();
+        let with_referral = calculate_fees(1_000_000_000_000, 1, true, false).unwrap();
         assert!(with_referral.total_fee <= 1);
         assert_eq!(
             with_referral.protocol_fee + with_referral.referral_fee,

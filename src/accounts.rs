@@ -77,7 +77,7 @@ mod tests {
             quote_reserve: 10_000_000_000,
             virtual_base_reserve: 1_000_000_000_000_000,
             virtual_quote_reserve: 20_000_000_000,
-            is_migrated: false,
+            is_migrated: 0,
         }
     }
 

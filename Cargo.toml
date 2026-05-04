@@ -20,6 +20,7 @@ include = [
 
 [features]
 default = []
+devnet = []
 jupiter-adapter = [
     "dep:anyhow",
     "dep:jupiter-amm-interface",
